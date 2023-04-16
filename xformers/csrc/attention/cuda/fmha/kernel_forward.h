@@ -380,7 +380,7 @@ struct AttentionKernel {
     using DefaultThreadblockMma = typename DefaultMma::ThreadblockMma;
     using Mma = typename cutlass::platform::conditional<
         kSingleValueIteration,
-        typename MakeCustomMma<DefaultThreadblockMma, kMaxK>::Mma,
+        typename MakeCustomMma<DefaultThreadblockMma, kMaxK, true>::Mma,
         DefaultThreadblockMma>::type;
     using AccumLambdaIterator = typename DefaultMmaAccumLambdaIterator<
         typename Mma::Operator::IteratorC,

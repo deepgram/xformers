@@ -89,6 +89,7 @@ template <
     SharedMemoryClearOption SharedMemoryClear = SharedMemoryClearOption::kNone,
     /// Upper boundon the K dimension
     int kMaxK = cutlass::platform::numeric_limits<int>::max(),
+    bool kScaleA = false,
     /// Used for partial specialization
     typename Enable = bool>
 class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
@@ -569,6 +570,11 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
         warp_transformed_frag_B[0],
         warp_loaded_frag_A[0],
         warp_loaded_frag_B[0]);
+    if (kScaleA)
+        warp_transformed_frag_A[0] =
+                cutlass::multiplies<WarpTransformedFragmentA>()(
+                        warp_transformed_frag_A[0],
+                        IteratorA::Element(0.125));
 
     // tf32x3 kernels use staging accumulation. warp_mma uses a temporary
     // accumulator and this temporary accumulator is added to the final
@@ -629,6 +635,11 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
               warp_transformed_frag_B[warp_mma_k % 2],
               warp_loaded_frag_A[warp_mma_k % 2],
               warp_loaded_frag_B[warp_mma_k % 2]);
+            if (kScaleA)
+                warp_transformed_frag_A[warp_mma_k % 2] =
+                      cutlass::multiplies<WarpTransformedFragmentA>()(
+                              warp_transformed_frag_A[warp_mma_k % 2],
+                              IteratorA::Element(0.125));
 
         if (platform::is_same<
                 typename Operator::MathOperator,

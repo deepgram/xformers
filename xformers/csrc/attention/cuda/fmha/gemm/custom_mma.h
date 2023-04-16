@@ -5,7 +5,7 @@
 #include "cutlass/gemm/threadblock/mma_multistage.h"
 #include "cutlass/gemm/threadblock/mma_pipelined.h"
 
-template <typename Mma, int kMaxK>
+template <typename Mma, int kMaxK, bool kScaleA>
 struct MakeCustomMma;
 
 template <
@@ -21,7 +21,7 @@ template <
     typename Policy,
     int Stages,
     cutlass::gemm::SharedMemoryClearOption SharedMemoryClear,
-    int kMaxK>
+    int kMaxK, bool kScaleA>
 struct MakeCustomMma<
     cutlass::gemm::threadblock::MmaMultistage<
         Shape,
@@ -36,7 +36,7 @@ struct MakeCustomMma<
         Policy,
         Stages,
         SharedMemoryClear>,
-    kMaxK> {
+    kMaxK, kScaleA> {
   // Reduce the number of stages if we don't need that many
   static int constexpr kStages =
       kMaxK == cutlass::platform::numeric_limits<int>::max()
@@ -57,7 +57,8 @@ struct MakeCustomMma<
       Policy,
       kStages,
       SharedMemoryClear,
-      kMaxK>;
+      kMaxK,
+      kScaleA>;
 };
 
 template <
@@ -69,7 +70,7 @@ template <
     typename ElementC,
     typename LayoutC,
     typename Policy,
-    int kMaxK>
+    int kMaxK, bool kScaleA>
 struct MakeCustomMma<
     cutlass::gemm::threadblock::MmaPipelined<
         Shape,
@@ -80,7 +81,7 @@ struct MakeCustomMma<
         ElementC,
         LayoutC,
         Policy>,
-    kMaxK> {
+    kMaxK, kScaleA> {
   using Mma = cutlass::gemm::threadblock::CustomMmaPipelined<
       Shape,
       IteratorA,
