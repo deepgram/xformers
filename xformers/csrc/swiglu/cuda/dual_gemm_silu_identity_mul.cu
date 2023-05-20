@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 #include <ATen/ScalarOps.h>
 #include <ATen/Tensor.h>
 #include <ATen/autocast_mode.h>
@@ -5,8 +12,8 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <torch/library.h>
 
-#include <43_dual_gemm/device/dual_gemm.h>
-#include <43_dual_gemm/thread/left_silu_and_mul.h>
+#include <45_dual_gemm/device/dual_gemm.h>
+#include <45_dual_gemm/thread/left_silu_and_mul.h>
 
 namespace {
 template <typename scalar_t>

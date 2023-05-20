@@ -106,7 +106,9 @@ def get_cuda_version(cuda_dir) -> int:
 def get_flash_attention_extensions(cuda_version: int, extra_compile_args):
     # Figure out default archs to target
     DEFAULT_ARCHS_LIST = ""
-    if cuda_version > 1100:
+    if cuda_version >= 1108:
+        DEFAULT_ARCHS_LIST = "7.5;8.0;8.6;9.0"
+    elif cuda_version > 1100:
         DEFAULT_ARCHS_LIST = "7.5;8.0;8.6"
     elif cuda_version == 1100:
         DEFAULT_ARCHS_LIST = "7.5;8.0"
@@ -227,6 +229,10 @@ def get_extensions():
             "-U__CUDA_NO_HALF_CONVERSIONS__",
             "--extended-lambda",
             "-D_ENABLE_EXTENDED_ALIGNED_STORAGE",
+            # Workaround for a regression with nvcc > 11.6
+            # See https://github.com/facebookresearch/xformers/issues/712
+            "--ptxas-options=-O2",
+            "--ptxas-options=-allow-expensive-optimizations=true",
         ] + get_extra_nvcc_flags_for_build_type()
         if os.getenv("XFORMERS_ENABLE_DEBUG_ASSERTIONS", "0") != "1":
             nvcc_flags.append("-DNDEBUG")

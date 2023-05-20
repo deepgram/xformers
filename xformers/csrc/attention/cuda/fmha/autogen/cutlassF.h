@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 // This file is auto-generated. See "generate_kernels.py"
 #pragma once
 #ifndef XFORMERS_MEM_EFF_ATTENTION_DISABLE_FORWARD
@@ -276,7 +283,7 @@ template <typename T> void dispatch_cutlassF_f32_sm80(T cb, int cc) {
 template <typename DT, typename T>
 void dispatch_cutlassF(T cb, int cc = 0) {
 
-    if (std::is_same<DT, cutlass::bfloat16_t>::value && 80 <= cc && cc < 90) {
+    if (std::is_same<DT, cutlass::bfloat16_t>::value && 80 <= cc && cc < 100) {
         dispatch_cutlassF_bf16_sm80(cb, cc);
     }
     if (std::is_same<DT, cutlass::half_t>::value && 50 <= cc && cc < 70) {
@@ -288,7 +295,7 @@ void dispatch_cutlassF(T cb, int cc = 0) {
     if (std::is_same<DT, cutlass::half_t>::value && 75 <= cc && cc < 80) {
         dispatch_cutlassF_f16_sm75(cb, cc);
     }
-    if (std::is_same<DT, cutlass::half_t>::value && 80 <= cc && cc < 90) {
+    if (std::is_same<DT, cutlass::half_t>::value && 80 <= cc && cc < 100) {
         dispatch_cutlassF_f16_sm80(cb, cc);
     }
     if (std::is_same<DT, float>::value && 50 <= cc && cc < 70) {
@@ -300,7 +307,7 @@ void dispatch_cutlassF(T cb, int cc = 0) {
     if (std::is_same<DT, float>::value && 75 <= cc && cc < 80) {
         dispatch_cutlassF_f32_sm75(cb, cc);
     }
-    if (std::is_same<DT, float>::value && 80 <= cc && cc < 90) {
+    if (std::is_same<DT, float>::value && 80 <= cc && cc < 100) {
         dispatch_cutlassF_f32_sm80(cb, cc);
     }
 }

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 #include <cmath>
 
 #include <ATen/Context.h>
@@ -38,7 +45,10 @@ mem_efficient_attention_backward_cutlass(
     int64_t rng_seed, // seed using for generating random numbers for dropout
     int64_t rng_offset, // offset into random number sequence
     int64_t custom_mask_type,
-    const c10::optional<double> scale) {
+    const c10::optional<double> scale,
+    // how many parallel blocks across the keys dimension. Use `-1` to
+    // determine automatically
+    int64_t num_splits_key) {
 #ifdef XFORMERS_MEM_EFF_ATTENTION_DISABLE_BACKWARD
   TORCH_CHECK(
       false,
@@ -169,6 +179,11 @@ mem_efficient_attention_backward_cutlass(
     if (use_dropout && !Kernel::kApplyDropout) {
       return;
     }
+    if (Kernel::kKeysQueriesAlignedToBlockSize &&
+        (cu_seqlens_q.has_value() || M % Kernel::kBlockSizeI ||
+         N % Kernel::kBlockSizeJ)) {
+      return;
+    }
     // Alignment
     if ((query.stride(2) % Kernel::kMinimumAlignment) ||
         (key.stride(2) % Kernel::kMinimumAlignment) ||
@@ -293,11 +308,44 @@ mem_efficient_attention_backward_cutlass(
       p.dropout_prob = dropout_p;
     }
 
+    // Heuristic for finding optimal number of splits
+    auto parallelism_without_split_key =
+        p.getBlocksGrid().x * p.getBlocksGrid().y * p.getBlocksGrid().z;
+    p.num_splits_key = cutlass::ceil_div(p.num_keys, Kernel::kBlockSizeJ);
+    p.num_splits_key = std::max<int64_t>(p.num_splits_key, num_splits_key);
+    if (num_splits_key <
+        1) { // Skip heuristic, if user provided an explicit value
+      // If we already have enough parallelism, split-keys can help
+      // better use L2 cache.
+      // This is negligible when the seqlen is too small tho
+      if (parallelism_without_split_key >= 256 &&
+          p.num_keys <= 2 * Kernel::kBlockSizeJ) {
+        p.num_splits_key = 1;
+      }
+      // Increasing `split_keys` leads to using more gmem for temporary storage
+      // when we need a staging area for gK/gV. let's avoid that
+      if (Kernel::kNeedsAccumGradK || Kernel::kNeedsAccumGradV) {
+        p.num_splits_key = std::min(
+            int(p.num_splits_key), 200 / (p.num_batches * p.num_heads));
+      }
+    }
+    if (!Kernel::kEnableSplitKeys || p.num_splits_key < 1) {
+      p.num_splits_key = 1;
+    }
+    if (at::globalContext().deterministicAlgorithms()) {
+      XFORMERS_CHECK(
+          num_splits_key <= 1,
+          "Using `num_splits_key > 1` makes the algorithm non-deterministic, and pytorch's deterministic mode is enabled");
+      p.num_splits_key = 1;
+    }
     int64_t size_bytes = p.workspace_size();
     if (size_bytes) {
       workspace =
           at::empty({size_bytes}, query.options().dtype(at::ScalarType::Byte));
       p.workspace = (float*)workspace.data_ptr();
+      if (p.should_zero_workspace()) {
+        workspace.zero_();
+      }
     }
     Kernel::check_supported(p);
 
